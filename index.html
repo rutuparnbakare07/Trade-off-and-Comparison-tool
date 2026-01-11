@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Decision Assistant by Rutuparn</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --sidebar-bg: #0f172a;
+            --sidebar-hover: #1e293b;
+            --accent: #38bdf8;
+            --bg-main: #f8fafc;
+            --text-main: #334155;
+            --white: #ffffff;
+            --border: #e2e8f0;
+        }
+
+        * { box-sizing: border-box; font-family: 'Inter', 'Segoe UI', system-ui, sans-serif; margin: 0; padding: 0; }
+
+        body { background: var(--bg-main); color: var(--text-main); display: flex; height: 100vh; overflow: hidden; }
+
+        /* Sidebar Navigation */
+        .sidebar {
+            width: 350px;
+            background: var(--sidebar-bg);
+            color: var(--white);
+            display: flex;
+            flex-direction: column;
+            padding: 25px;
+            overflow-y: auto;
+            border-right: 1px solid var(--border);
+        }
+
+        .brand { margin-bottom: 30px; border-bottom: 1px solid var(--sidebar-hover); padding-bottom: 20px; }
+        .brand h1 { font-size: 1.25rem; color: var(--accent); font-weight: 700; text-transform: uppercase; letter-spacing: 1px; }
+        .brand p { font-size: 0.8rem; opacity: 0.6; margin-top: 5px; }
+
+        .config-group { margin-bottom: 25px; }
+        .config-label { display: block; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; color: #94a3b8; margin-bottom: 10px; }
+        
+        input, textarea, select {
+            width: 100%; padding: 10px; background: var(--sidebar-hover); border: 1px solid #334155; 
+            border-radius: 6px; color: var(--white); font-size: 0.9rem; margin-bottom: 10px;
+        }
+
+        textarea { resize: none; height: 80px; }
+
+        .btn { 
+            width: 100%; padding: 12px; border: none; border-radius: 6px; cursor: pointer; 
+            font-weight: 600; font-size: 0.9rem; transition: all 0.2s; margin-top: 10px;
+        }
+        .btn-primary { background: var(--accent); color: var(--sidebar-bg); }
+        .btn-primary:hover { background: #7dd3fc; transform: translateY(-1px); }
+        .btn-secondary { background: transparent; border: 1px solid #334155; color: var(--white); }
+        .btn-secondary:hover { background: var(--sidebar-hover); }
+
+        /* Main Analysis Area */
+        .main-stage { flex: 1; padding: 40px; overflow-y: auto; display: flex; flex-direction: column; }
+        .stage-header { margin-bottom: 30px; display: flex; justify-content: space-between; align-items: center; }
+        
+        .results-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+        
+        .card { 
+            background: var(--white); padding: 25px; border-radius: 12px; 
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); border: 1px solid var(--border);
+        }
+
+        .option-card h4 { display: flex; justify-content: space-between; align-items: center; font-size: 1.1rem; }
+        .score-badge { background: #f0f9ff; color: #0369a1; padding: 4px 12px; border-radius: 20px; font-weight: 800; font-size: 0.9rem; }
+        .highlight { border: 2px solid var(--accent); }
+
+        .empty-state { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #94a3b8; }
+        .empty-state i { margin-bottom: 15px; opacity: 0.3; }
+
+        @media (max-width: 1024px) { body { flex-direction: column; overflow: auto; } .sidebar { width: 100%; height: auto; } }
+    </style>
+</head>
+
+<body>
+    <aside class="sidebar">
+        <div class="brand">
+            <h1>Decision Assistant</h1>
+            <p>By Rutuparn</p>
+        </div>
+
+        <div class="config-group">
+            <label class="config-label">General Info</label>
+            <input id="decision-title" placeholder="Decision Title (e.g., Tech Stack)">
+            <textarea id="decision-context" placeholder="Context or specific constraints..."></textarea>
+        </div>
+
+        <div class="config-group">
+            <label class="config-label">Options</label>
+            <input id="option1" placeholder="Option 1">
+            <input id="option2" placeholder="Option 2">
+            <input id="option3" placeholder="Option 3 (optional)">
+        </div>
+
+        <div class="config-group">
+            <label class="config-label">Criteria Hierarchy</label>
+            <div id="criteria-list">
+                <div class="criterion-item">
+                    <input class="criterion-input" value="Performance">
+                    <select class="criterion-weight">
+                        <option value="1">Low</option>
+                        <option value="2">Medium</option>
+                        <option value="3" selected>High</option>
+                        <option value="5">Critical</option>
+                    </select>
+                </div>
+                <div class="criterion-item">
+                    <input class="criterion-input" value="Scalability">
+                    <select class="criterion-weight">
+                        <option value="1">Low</option>
+                        <option value="2">Medium</option>
+                        <option value="3">High</option>
+                        <option value="5" selected>Critical</option>
+                    </select>
+                </div>
+            </div>
+            <button class="btn btn-secondary" id="add-criterion"><i class="fas fa-plus"></i> Add Criterion</button>
+        </div>
+
+        <button class="btn btn-primary" id="analyze-btn">RUN ANALYSIS <i class="fas fa-microchip"></i></button>
+    </aside>
+
+    <main class="main-stage">
+        <header class="stage-header">
+            <h2 id="stage-title">Technical Analysis Report</h2>
+            <div id="timestamp" style="font-size: 0.8rem; color: #94a3b8;">System Idle</div>
+        </header>
+
+        <div id="results-container" class="empty-state">
+            <i class="fas fa-terminal fa-4x"></i>
+            <p>Awaiting input configuration...</p>
+        </div>
+    </main>
+
+    <script>
+        const analyzeBtn = document.getElementById("analyze-btn");
+        const addCriterionBtn = document.getElementById("add-criterion");
+        const criteriaList = document.getElementById("criteria-list");
+        const resultsContainer = document.getElementById("results-container");
+
+        addCriterionBtn.onclick = () => {
+            const div = document.createElement("div");
+            div.className = "criterion-item";
+            div.innerHTML = `
+                <input class="criterion-input" placeholder="Criterion Name">
+                <select class="criterion-weight">
+                    <option value="1">Low</option>
+                    <option value="2" selected>Medium</option>
+                    <option value="3">High</option>
+                    <option value="5">Critical</option>
+                </select>`;
+            criteriaList.appendChild(div);
+        };
+
+        analyzeBtn.onclick = () => {
+            const title = document.getElementById("decision-title").value.trim();
+            if (!title) { alert("Enter decision title"); return; }
+
+            const options = ["option1", "option2", "option3"]
+                .map(id => document.getElementById(id).value.trim())
+                .filter(Boolean);
+
+            if (options.length < 2) { alert("Add at least 2 options"); return; }
+
+            const criteria = [];
+            document.querySelectorAll(".criterion-item").forEach(c => {
+                const name = c.querySelector(".criterion-input").value.trim();
+                const weight = parseInt(c.querySelector(".criterion-weight").value);
+                if (name) criteria.push({ name, weight });
+            });
+
+            if (criteria.length < 2) { alert("Define at least 2 criteria"); return; }
+
+            document.getElementById("timestamp").innerText = "Last Analysis: " + new Date().toLocaleTimeString();
+            document.getElementById("stage-title").innerText = `Analysis: ${title}`;
+
+            const results = options.map(opt => {
+                let total = 0, weightSum = 0;
+                criteria.forEach(c => {
+                    const score = generateScore(opt, c.name);
+                    total += score * c.weight;
+                    weightSum += c.weight;
+                });
+                return { name: opt, score: (total / weightSum).toFixed(1) };
+            });
+
+            results.sort((a, b) => b.score - a.score);
+            renderResults(results);
+        };
+
+        function generateScore(option, criterion) {
+            return Math.floor(Math.random() * 4) + 6; // 6–9 range for stable results
+        }
+
+        function renderResults(results) {
+            resultsContainer.className = "results-grid";
+            resultsContainer.innerHTML = results.map((r, i) => `
+                <div class="card option-card ${i === 0 ? 'highlight' : ''}">
+                    <h4>
+                        <span>${i === 0 ? '🏆 ' : ''}${r.name}</span>
+                        <span class="score-badge">${r.score}</span>
+                    </h4>
+                    <p style="margin-top:15px; font-size:0.85rem; color:#64748b;">
+                        Technical compatibility score based on weighted criteria.
+                    </p>
+                </div>
+            `).join("");
+        }
+    </script>
+</body>
+</html>
