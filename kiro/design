@@ -1,0 +1,430 @@
+# Design Document: Trade-Off Analyzer
+
+## Overview
+
+The Trade-Off Analyzer is a decision support system that enables systematic comparison of multiple options across weighted criteria. The system provides a structured framework for quantitative decision-making through scoring, weighting, and visual analysis of trade-offs.
+
+The core design philosophy emphasizes simplicity and transparency - users should understand exactly how their decisions are being analyzed and be able to validate the reasoning behind recommendations.
+
+## Architecture
+
+The system follows a layered architecture with clear separation of concerns:
+
+```
+┌─────────────────────────────────────────┐
+│           Presentation Layer            │
+│  (UI Components, Visualizations)        │
+├─────────────────────────────────────────┤
+│           Application Layer             │
+│  (Comparison Logic, Calculations)       │
+├─────────────────────────────────────────┤
+│             Domain Layer                │
+│  (Options, Criteria, Scores)           │
+├─────────────────────────────────────────┤
+│         Infrastructure Layer            │
+│  (Data Persistence, Export/Import)      │
+└─────────────────────────────────────────┘
+```
+
+**Design Rationale**: This layered approach ensures that business logic remains independent of UI concerns and data storage mechanisms, making the system maintainable and testable.
+
+## Components and Interfaces
+
+### Core Domain Components
+
+#### Comparison
+The root aggregate that contains all elements of a decision analysis.
+
+```typescript
+interface Comparison {
+  id: string
+  name: string
+  description?: string
+  options: Option[] // Maximum 10+ options supported
+  criteria: Criterion[] // Maximum 15+ criteria supported
+  scores: Score[]
+  createdAt: Date
+  updatedAt: Date
+}
+
+// System constraints
+const SYSTEM_LIMITS = {
+  MAX_OPTIONS: 50, // Well above required minimum of 10
+  MAX_CRITERIA: 50, // Well above required minimum of 15
+  MIN_SCORE: 1,
+  MAX_SCORE: 10,
+  MIN_WEIGHT: 0,
+  MAX_WEIGHT: 100
+} as const
+```
+
+#### Option
+Represents a choice being evaluated.
+
+```typescript
+interface Option {
+  id: string
+  name: string
+  description?: string
+}
+```
+
+#### Criterion
+Represents an evaluation dimension with associated weight.
+
+```typescript
+interface Criterion {
+  id: string
+  name: string
+  description?: string
+  weight: number // 0-100, normalized to sum to 100%
+}
+```
+
+#### Score
+Links an option to a criterion with a numerical rating.
+
+```typescript
+interface Score {
+  optionId: string
+  criterionId: string
+  value: number // 1-10 scale
+  comment?: string
+}
+```
+
+### Application Services
+
+#### ComparisonService
+Manages the core business logic for comparisons.
+
+```typescript
+interface ComparisonService {
+  createComparison(name: string, description?: string): Comparison
+  addOption(comparisonId: string, option: Option): void
+  removeOption(comparisonId: string, optionId: string): void
+  updateOption(comparisonId: string, optionId: string, updates: Partial<Option>): void
+  addCriterion(comparisonId: string, criterion: Criterion): void
+  removeCriterion(comparisonId: string, criterionId: string): void
+  updateCriterion(comparisonId: string, criterionId: string, updates: Partial<Criterion>): void
+  updateWeights(comparisonId: string, weights: Map<string, number>): void
+  setScore(comparisonId: string, score: Score): void
+  calculateResults(comparisonId: string): ComparisonResults
+  validateComparison(comparisonId: string): ValidationResult
+  getCompletionStatus(comparisonId: string): CompletionStatus
+}
+
+interface ValidationResult {
+  isValid: boolean
+  errors: ValidationError[]
+  warnings: ValidationWarning[]
+}
+```
+
+#### CalculationEngine
+Handles all scoring and ranking calculations.
+
+```typescript
+interface CalculationEngine {
+  normalizeWeights(weights: number[]): number[]
+  calculateWeightedScore(scores: Score[], weights: Map<string, number>): number
+  rankOptions(comparison: Comparison): RankedOption[]
+  performSensitivityAnalysis(comparison: Comparison): SensitivityResults
+}
+```
+
+**Design Rationale**: Separating calculation logic into its own service makes it easier to test mathematical operations and ensures consistency across different parts of the application.
+
+#### VisualizationService
+Generates data structures for different chart types.
+
+```typescript
+interface VisualizationService {
+  generateComparisonMatrix(comparison: Comparison): MatrixData
+  generateRadarChart(comparison: Comparison, optionId: string): RadarData
+  generateBarChart(comparison: Comparison): BarChartData
+  generateSensitivityChart(analysis: SensitivityResults): ChartData
+}
+```
+
+### Infrastructure Services
+
+#### PersistenceService
+Handles data storage and retrieval.
+
+```typescript
+interface PersistenceService {
+  saveComparison(comparison: Comparison): Promise<void>
+  loadComparison(id: string): Promise<Comparison>
+  listComparisons(): Promise<ComparisonSummary[]>
+  deleteComparison(id: string): Promise<void>
+}
+```
+
+#### ExportService
+Manages data export in various formats.
+
+```typescript
+interface ExportService {
+  exportToJSON(comparison: Comparison): string
+  exportToCSV(comparison: Comparison): string
+  exportToPDF(comparison: Comparison, includeCharts: boolean): Buffer
+  exportToHTML(comparison: Comparison): string
+}
+```
+
+#### ReportService
+Generates comprehensive analysis reports with customizable content.
+
+```typescript
+interface ReportService {
+  generateReport(comparison: Comparison, options: ReportOptions): Report
+  generateExecutiveSummary(results: ComparisonResults): ExecutiveSummary
+  customizeReportContent(template: ReportTemplate, selections: ContentSelection[]): ReportTemplate
+  exportReport(report: Report, format: ReportFormat): Buffer | string
+}
+
+interface ReportOptions {
+  includeVisualizations: boolean
+  includeDetailedScores: boolean
+  includeSensitivityAnalysis: boolean
+  customSections: string[]
+}
+
+interface Report {
+  executiveSummary: ExecutiveSummary
+  detailedAnalysis: DetailedAnalysis
+  visualizations: ChartData[]
+  recommendations: Recommendation[]
+  appendices: Appendix[]
+}
+```
+
+**Design Rationale**: Separating report generation into its own service allows for complex report customization and multiple output formats while keeping the core comparison logic focused.
+
+## Data Models
+
+### ComparisonResults
+Aggregated results of a comparison analysis.
+
+```typescript
+interface ComparisonResults {
+  rankedOptions: RankedOption[]
+  totalScores: Map<string, number>
+  weightedContributions: Map<string, Map<string, number>>
+  recommendedOption: RankedOption
+  completionStatus: CompletionStatus
+}
+
+interface RankedOption {
+  option: Option
+  totalScore: number
+  rank: number
+  criteriaBreakdown: Map<string, number>
+}
+
+interface CompletionStatus {
+  isComplete: boolean
+  missingScores: Array<{optionId: string, criterionId: string}>
+  totalScores: number
+  completedScores: number
+}
+```
+
+### SensitivityResults
+Results of sensitivity analysis showing how weight changes affect rankings.
+
+```typescript
+interface SensitivityResults {
+  baselineRanking: RankedOption[]
+  weightInfluence: Map<string, number>
+  rankingStability: number
+  criticalCriteria: string[]
+  scenarios: SensitivityScenario[]
+}
+
+interface SensitivityScenario {
+  name: string
+  weightAdjustments: Map<string, number>
+  resultingRanking: RankedOption[]
+  rankingChanges: RankingChange[]
+}
+
+interface RankingChange {
+  optionId: string
+  previousRank: number
+  newRank: number
+  rankChange: number
+}
+```
+
+### Visualization Data Models
+Data structures for different chart types and visual representations.
+
+```typescript
+interface MatrixData {
+  options: Option[]
+  criteria: Criterion[]
+  scores: Score[]
+  colorMapping: Map<string, string>
+}
+
+interface RadarData {
+  option: Option
+  dataPoints: Array<{
+    criterion: string
+    value: number
+    maxValue: number
+  }>
+}
+
+interface BarChartData {
+  categories: string[]
+  series: Array<{
+    name: string
+    data: number[]
+    color: string
+  }>
+}
+
+interface ChartData {
+  type: 'radar' | 'bar' | 'matrix' | 'sensitivity'
+  title: string
+  data: RadarData | BarChartData | MatrixData | SensitivityChartData
+}
+```
+
+### Report Data Models
+Structures for comprehensive reporting and analysis documentation.
+
+```typescript
+interface ExecutiveSummary {
+  recommendedOption: Option
+  confidenceLevel: number
+  keyFindings: string[]
+  criticalFactors: string[]
+  riskAssessment: string
+}
+
+interface DetailedAnalysis {
+  scoringBreakdown: Map<string, Map<string, number>>
+  weightingRationale: Map<string, string>
+  alternativeRankings: RankedOption[]
+  sensitivityInsights: string[]
+}
+
+interface Recommendation {
+  type: 'primary' | 'alternative' | 'caution'
+  title: string
+  description: string
+  supportingData: any[]
+}
+```
+
+## Correctness Properties
+
+*A property is a characteristic or behavior that should hold true across all valid executions of a system—essentially, a formal statement about what the system should do. Properties serve as the bridge between human-readable specifications and machine-verifiable correctness guarantees.*
+
+Based on the prework analysis, I've identified several key properties that need to be validated. After reviewing for redundancy, here are the essential correctness properties:
+
+### Property 1: Weight Normalization
+*For any* set of criteria weights, the normalized weights should always sum to exactly 100%
+**Validates: Requirements 2.3**
+
+### Property 2: Data Consistency on Option Removal
+*For any* comparison with options and scores, when an option is removed, all associated scores should be removed and the comparison matrix should remain consistent
+**Validates: Requirements 1.4**
+
+### Property 3: Data Consistency on Criterion Removal
+*For any* comparison with criteria and scores, when a criterion is removed, all associated scores should be removed and weights should be recalculated to sum to 100%
+**Validates: Requirements 2.4**
+
+### Property 4: Score Validation
+*For any* score input, the system should accept values in the range 1-10 and reject values outside this range
+**Validates: Requirements 3.1, 3.5**
+
+### Property 5: Weighted Score Calculation
+*For any* complete score matrix with normalized weights, the weighted total for each option should equal the sum of (score × weight) for all criteria
+**Validates: Requirements 3.4, 4.1**
+
+### Property 6: Ranking Consistency
+*For any* set of calculated weighted totals, options should be ranked in descending order of their total scores, with the highest-scoring option identified as recommended
+**Validates: Requirements 4.2, 4.5**
+
+### Property 7: Completion Status Tracking
+*For any* comparison, the completion status should accurately reflect which option-criterion combinations are missing scores
+**Validates: Requirements 3.3**
+
+### Property 8: Persistence Round Trip
+*For any* comparison, saving then loading should restore the complete state including all options, criteria, weights, scores, and calculated results
+**Validates: Requirements 6.1, 6.2**
+
+### Property 9: Equal Weight Default
+*For any* set of criteria with no specified weights, the system should assign equal weights that sum to 100%
+**Validates: Requirements 2.6**
+
+### Property 10: Reactivity on Weight Changes
+*For any* comparison with complete scores, changing criteria weights should immediately trigger recalculation of all totals and rankings
+**Validates: Requirements 4.4, 7.2**
+
+### Property 11: Export Format Validity
+*For any* comparison exported to JSON or CSV format, the exported data should be valid in that format and contain all comparison data
+**Validates: Requirements 6.5, 8.4**
+
+### Property 12: Visualization Data Completeness
+*For any* comparison with complete data, generated visualizations (matrix, radar, bar charts) should include data for all options and criteria
+**Validates: Requirements 5.1, 5.2, 5.3**
+
+## Error Handling
+
+The system implements comprehensive error handling across all layers:
+
+### Input Validation Errors
+- **Invalid Score Range**: Scores outside 1-10 range are rejected with clear error messages
+- **Missing Required Fields**: Option and criterion names are required; descriptive errors guide users
+- **Invalid Weight Values**: Weights outside 0-100 range are rejected
+
+### Data Consistency Errors
+- **Orphaned Scores**: System prevents scores from referencing non-existent options or criteria
+- **Incomplete Calculations**: System clearly indicates when calculations cannot be performed due to missing data
+
+### Persistence Errors
+- **Save Failures**: File system errors are caught and reported to users with retry options
+- **Load Failures**: Corrupted or invalid data files are handled gracefully with error reporting
+- **Format Validation**: Imported data is validated against expected schemas
+
+### Calculation Errors
+- **Division by Zero**: Handled in weight normalization when all weights are zero
+- **Numerical Precision**: Floating-point calculations use appropriate precision handling
+- **Empty Data Sets**: Calculations gracefully handle empty options or criteria lists
+
+**Design Rationale**: Comprehensive error handling ensures the system remains stable and provides clear feedback to users, maintaining trust in the decision-making process.
+
+## Testing Strategy
+
+The testing approach combines unit tests for specific scenarios with property-based tests for universal correctness guarantees.
+
+### Unit Testing Focus
+- **Specific Examples**: Test concrete scenarios like "3 options, 4 criteria with known scores"
+- **Edge Cases**: Empty comparisons, single option/criterion, boundary score values
+- **Error Conditions**: Invalid inputs, missing data, file system failures
+- **Integration Points**: Service interactions, data persistence, export functionality
+
+### Property-Based Testing Focus
+- **Mathematical Properties**: Weight normalization, score calculations, ranking consistency
+- **Data Integrity**: Consistency after add/remove operations, persistence round trips
+- **Input Validation**: Score ranges, required fields, format validation
+- **Behavioral Consistency**: Reactivity, completion tracking, visualization data
+
+### Testing Configuration
+- **Property Tests**: Minimum 100 iterations per test to ensure comprehensive input coverage
+- **Test Framework**: Jest with fast-check for property-based testing
+- **Coverage Requirements**: 90% code coverage with focus on business logic paths
+- **Performance Tests**: Large datasets (100+ options, 50+ criteria) for scalability validation
+
+### Test Data Generation
+- **Smart Generators**: Generate realistic comparison scenarios with valid constraints
+- **Edge Case Coverage**: Include boundary conditions, empty states, maximum capacity scenarios
+- **Invalid Input Testing**: Generate invalid data to verify error handling
+
+**Design Rationale**: The dual testing approach ensures both specific functionality works correctly (unit tests) and universal properties hold across all possible inputs (property tests), providing comprehensive validation of system correctness.
