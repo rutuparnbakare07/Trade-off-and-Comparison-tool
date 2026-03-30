@@ -582,7 +582,7 @@
       await signInWithEmailAndPassword(auth, email, password);
       showToast('loginToast', 'loginToastMsg', '✓ Signed in! Redirecting…', 'success');
       setTimeout(() => {
-        window.location.href = 'https://rutuparnbakare07.github.io/Trade-off-and-Comparison-tool/';
+        window.location.href = 'main.html';
       }, 1200);
     } catch (err) {
       showToast('loginToast', 'loginToastMsg', mapFirebaseError(err.code), 'error');
@@ -625,7 +625,7 @@
 
       showToast('registerToast', 'registerToastMsg', '🎉 Account created! Redirecting…', 'success');
       setTimeout(() => {
-        window.location.href = 'https://rutuparnbakare07.github.io/Trade-off-and-Comparison-tool/';
+        window.location.href = 'main.html';
       }, 1400);
     } catch (err) {
       showToast('registerToast', 'registerToastMsg', mapFirebaseError(err.code), 'error');
