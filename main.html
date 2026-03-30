@@ -1,166 +1,119 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Decision Assistant by Rutuparn</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Decision Assistant by Rutuparn</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
-    <style>
-        :root {
-            --sidebar-bg: #0f172a;
-            --sidebar-hover: #1e293b;
-            --accent: #38bdf8;
-            --bg-main: #f8fafc;
-            --text-main: #334155;
-            --white: #ffffff;
-            --border: #e2e8f0;
-        }
+<style>
+:root {
+    --sidebar-bg: #0f172a;
+    --sidebar-hover: #1e293b;
+    --accent: #38bdf8;
+    --bg-main: #f8fafc;
+    --text-main: #334155;
+    --white: #ffffff;
+    --border: #e2e8f0;
+}
 
-        * { box-sizing: border-box; font-family: 'Inter', 'Segoe UI', system-ui, sans-serif; margin: 0; padding: 0; }
+* { box-sizing: border-box; font-family: 'Inter', sans-serif; margin: 0; padding: 0; }
 
-        body { background: var(--bg-main); color: var(--text-main); display: flex; height: 100vh; overflow: hidden; }
+body { display: flex; height: 100vh; }
 
-        .sidebar {
-            width: 350px;
-            background: var(--sidebar-bg);
-            color: var(--white);
-            display: flex;
-            flex-direction: column;
-            padding: 25px;
-            overflow-y: auto;
-            border-right: 1px solid var(--border);
-        }
+.sidebar {
+    width: 350px;
+    background: var(--sidebar-bg);
+    color: white;
+    padding: 25px;
+}
 
-        .brand { margin-bottom: 30px; border-bottom: 1px solid var(--sidebar-hover); padding-bottom: 20px; }
-        .brand h1 { font-size: 1.25rem; color: var(--accent); font-weight: 700; text-transform: uppercase; letter-spacing: 1px; }
-        .brand p { font-size: 0.8rem; opacity: 0.6; margin-top: 5px; }
+.main-stage {
+    flex: 1;
+    padding: 40px;
+}
 
-        .config-group { margin-bottom: 25px; }
-        .config-label { display: block; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; color: #94a3b8; margin-bottom: 10px; }
+.stage-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
 
-        input, textarea, select {
-            width: 100%; padding: 10px; background: var(--sidebar-hover); border: 1px solid #334155;
-            border-radius: 6px; color: var(--white); font-size: 0.9rem; margin-bottom: 10px;
-        }
+.header-right {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
 
-        textarea { resize: none; height: 80px; }
-
-        .btn {
-            width: 100%; padding: 12px; border: none; border-radius: 6px; cursor: pointer;
-            font-weight: 600; font-size: 0.9rem; transition: all 0.2s; margin-top: 10px;
-        }
-        .btn-primary { background: var(--accent); color: var(--sidebar-bg); }
-        .btn-primary:hover { background: #7dd3fc; transform: translateY(-1px); }
-        .btn-secondary { background: transparent; border: 1px solid #334155; color: var(--white); }
-        .btn-secondary:hover { background: var(--sidebar-hover); }
-
-        .main-stage { flex: 1; padding: 40px; overflow-y: auto; display: flex; flex-direction: column; }
-
-        /* 🔥 UPDATED HEADER STYLE */
-        .stage-header {
-            margin-bottom: 30px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .header-right {
-            display: flex;
-            gap: 10px;
-            align-items: center;
-        }
-
-        .login-btn {
-            padding: 8px 14px;
-            border: none;
-            border-radius: 6px;
-            background: var(--accent);
-            color: var(--sidebar-bg);
-            font-weight: 600;
-            cursor: pointer;
-        }
-
-        .login-btn:hover {
-            background: #7dd3fc;
-        }
-
-        .results-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
-
-        .card {
-            background: var(--white); padding: 25px; border-radius: 12px;
-            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); border: 1px solid var(--border);
-        }
-
-        .option-card h4 { display: flex; justify-content: space-between; align-items: center; font-size: 1.1rem; }
-        .score-badge { background: #f0f9ff; color: #0369a1; padding: 4px 12px; border-radius: 20px; font-weight: 800; font-size: 0.9rem; }
-        .highlight { border: 2px solid var(--accent); }
-
-        .empty-state { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #94a3b8; }
-        .empty-state i { margin-bottom: 15px; opacity: 0.3; }
-
-        @media (max-width: 1024px) { body { flex-direction: column; overflow: auto; } .sidebar { width: 100%; height: auto; } }
-    </style>
+.login-btn {
+    padding: 8px 14px;
+    border: none;
+    border-radius: 6px;
+    background: var(--accent);
+    cursor: pointer;
+}
+</style>
 </head>
 
 <body>
 
 <aside class="sidebar">
-    <div class="brand">
-        <h1>Decision Assistant</h1>
-        <p>By Rutuparn</p>
-    </div>
-
-    <div class="config-group">
-        <label class="config-label">General Info</label>
-        <input id="decision-title" placeholder="Decision Title">
-        <textarea id="decision-context" placeholder="Context..."></textarea>
-    </div>
-
-    <div class="config-group">
-        <label class="config-label">Options</label>
-        <input id="option1" placeholder="Option 1">
-        <input id="option2" placeholder="Option 2">
-        <input id="option3" placeholder="Option 3">
-    </div>
-
-    <div class="config-group">
-        <label class="config-label">Criteria</label>
-        <div id="criteria-list"></div>
-        <button class="btn btn-secondary" id="add-criterion">Add Criterion</button>
-    </div>
-
-    <button class="btn btn-primary" id="analyze-btn">RUN ANALYSIS</button>
+    <h2>Decision Assistant</h2>
 </aside>
 
 <main class="main-stage">
 
-    <!-- ✅ UPDATED HEADER WITH LOGIN BUTTON -->
-    <header class="stage-header">
-        <h2 id="stage-title">Technical Analysis Report</h2>
+<header class="stage-header">
+    <h2>Technical Analysis Report</h2>
 
-        <div class="header-right">
-            <div id="timestamp" style="font-size: 0.8rem; color: #94a3b8;">System Idle</div>
+    <div class="header-right">
+        <span id="timestamp">System Idle</span>
 
-            <a href="login.html">
-                <button class="login-btn">LogOut</button>
-            </a>
-        </div>
-    </header>
-
-    <div id="results-container" class="empty-state">
-        <i class="fas fa-terminal fa-4x"></i>
-        <p>Awaiting input configuration...</p>
+        <!-- ✅ REAL LOGOUT BUTTON -->
+        <button class="login-btn" onclick="logout()">Logout</button>
     </div>
+</header>
+
+<div>
+    <p>Your tool UI here...</p>
+</div>
 
 </main>
 
-<script>
-const analyzeBtn = document.getElementById("analyze-btn");
+<!-- 🔐 FIREBASE AUTH PROTECTION + LOGOUT -->
+<script type="module">
 
-analyzeBtn.onclick = () => {
-    alert("Analysis running...");
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, onAuthStateChanged, signOut } 
+from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+
+/* 🔥 SAME CONFIG AS LOGIN PAGE */
+const firebaseConfig = {
+  apiKey: "AIzaSyCDoCc65V7PoQyUTnMKiSQAv0x8lUnpnAU",
+  authDomain: "comparison-and-decision-tool.firebaseapp.com",
+  projectId: "comparison-and-decision-tool",
+  storageBucket: "comparison-and-decision-tool.firebasestorage.app",
+  messagingSenderId: "872413042366",
+  appId: "1:872413042366:web:3b4019ad9cf230f33b30ef"
 };
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+
+/* ✅ PROTECT PAGE */
+onAuthStateChanged(auth, (user) => {
+    if (!user) {
+        window.location.href = "index.html";
+    }
+});
+
+/* ✅ LOGOUT FUNCTION */
+window.logout = function() {
+    signOut(auth).then(() => {
+        window.location.href = "index.html";
+    });
+};
+
 </script>
 
 </body>
